@@ -1,0 +1,105 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and general statistics",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "interviewsCompleted": { "type": "number" },
+            "avgScore": { "type": "number" },
+            "questionsSolved": { "type": "number" },
+            "resourcesRead": { "type": "number" }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "updatedAt"]
+    },
+    "InterviewSession": {
+      "title": "Interview Session",
+      "description": "A single mock interview session with AI",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "level": { "type": "string" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        "scores": {
+          "type": "object",
+          "properties": {
+            "communication": { "type": "number" },
+            "technical": { "type": "number" },
+            "confidence": { "type": "number" }
+          }
+        },
+        "feedback": { "type": "string" },
+        "improvements": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["ongoing", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "role", "level", "createdAt", "status"]
+    },
+    "SavedResource": {
+      "title": "Saved Resource",
+      "description": "A bookmarked learning resource",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "link": { "type": "string" },
+        "category": { "type": "string" },
+        "savedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "link", "savedAt"]
+    },
+    "CodingAttempt": {
+      "title": "Coding Attempt",
+      "description": "A user's submission for a coding problem",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "problemId": { "type": "number" },
+        "code": { "type": "string" },
+        "score": { "type": "number" },
+        "status": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "problemId", "code", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile and top-level stats"
+    },
+    "/users/{userId}/interviews/{interviewId}": {
+      "schema": "InterviewSession",
+      "description": "Detailed interview logs for a specific user"
+    },
+    "/users/{userId}/resources/{resourceId}": {
+      "schema": "SavedResource",
+      "description": "Resources bookmarked by a user"
+    },
+    "/users/{userId}/codingAttempts/{attemptId}": {
+      "schema": "CodingAttempt",
+      "description": "Coding submissions and results for a user"
+    }
+  }
+}

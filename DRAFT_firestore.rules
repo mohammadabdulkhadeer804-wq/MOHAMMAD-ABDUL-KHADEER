@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isVerifiedUser() { return isSignedIn() && request.auth.token.email_verified == true; }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'updatedAt']) &&
+             data.keys().size() >= 3 &&
+             data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             data.updatedAt == request.time;
+    }
+
+    function isValidInterview(data) {
+      return data.keys().hasAll(['userId', 'role', 'level', 'createdAt', 'status']) &&
+             data.userId == request.auth.uid &&
+             data.role is string && data.role.size() <= 100 &&
+             data.level is string && data.level.size() <= 50 &&
+             data.status in ['ongoing', 'completed'] &&
+             (data.keys().hasAny(['history']) ? data.history is list && data.history.size() <= 200 : true) &&
+             (data.keys().hasAny(['scores']) ? 
+                data.scores.communication is number && data.scores.communication >= 0 && data.scores.communication <= 10 &&
+                data.scores.technical is number && data.scores.technical >= 0 && data.scores.technical <= 10 &&
+                data.scores.confidence is number && data.scores.confidence >= 0 && data.scores.confidence <= 10
+              : true);
+    }
+
+    function isValidResource(data) {
+      return data.keys().hasAll(['userId', 'title', 'link', 'savedAt']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() <= 200 &&
+             data.link is string && data.link.size() <= 2000 &&
+             data.savedAt == request.time;
+    }
+
+    function isValidCoding(data) {
+      return data.keys().hasAll(['userId', 'problemId', 'code', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.problemId is number &&
+             data.code is string && data.code.size() <= 100000 &&
+             data.timestamp == request.time;
+    }
+
+    // Collection Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['stats', 'displayName', 'updatedAt'])
+      );
+
+      match /interviews/{interviewId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidInterview(incoming()) && incoming().createdAt == request.time;
+        allow update: if isOwner(userId) && isValidInterview(incoming()) && (
+          // Action: Update Progress
+          (existing().status == 'ongoing' && incoming().diff(existing()).affectedKeys().hasOnly(['history', 'status', 'scores', 'feedback', 'improvements', 'completedAt'])) ||
+          // Terminal State Locking
+          (existing().status == 'completed' && false)
+        );
+        allow delete: if isOwner(userId);
+      }
+
+      match /resources/{resourceId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidResource(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /codingAttempts/{attemptId} {
+        allow list, get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCoding(incoming());
+      }
+    }
+  }
+}

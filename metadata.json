@@ -1,0 +1,8 @@
+{
+  "name": "AI Interview Pro",
+  "description": "Scalable AI-driven interview preparation platform with mock interviews, resume analysis, and smart resource tracking.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
